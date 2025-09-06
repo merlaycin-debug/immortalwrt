@@ -10,12 +10,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
-      - name: Checkout
+      - name: Checkout build-ax3600-openclash branch
         uses: actions/checkout@v4
         with:
-    ref: build-ax3600-openclash
+          ref: build-ax3600-openclash
 
       - name: Install build deps
         run: |
