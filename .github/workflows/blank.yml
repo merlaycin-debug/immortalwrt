@@ -1,0 +1,11 @@
+name: unlock-actions
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello
+        run: echo "Actions unlocked!"
