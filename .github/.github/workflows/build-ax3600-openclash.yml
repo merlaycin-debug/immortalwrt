@@ -1,3 +1,7 @@
+name: build-ax3600-openclash
+
+on:
+  workflow_dispatch:   
 name: Build ImmortalWrt AX3600 + OpenClash
 
 on:
