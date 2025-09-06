@@ -1,14 +1,11 @@
 name: build-ax3600-openclash
 
 on:
-  workflow_dispatch:   
-name: Build ImmortalWrt AX3600 + OpenClash
-
-on:
-  workflow_dispatch:
-  push:
+  workflow_dispatch:        
+  push:                      
     branches:
       - build-ax3600-openclash
+
 
 jobs:
   build:
