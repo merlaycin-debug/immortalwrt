@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout build-ax3600-openclash branch
         uses: actions/checkout@v4
@@ -16,18 +17,44 @@ jobs:
           ref: build-ax3600-openclash
           fetch-depth: 0
 
+      # 释放磁盘空间，避免 "No space left on device"
+      - name: Free Disk Space
+        run: |
+          echo "Before cleanup"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/lib/android
+          sudo docker image prune -a -f || true
+          sudo apt-get clean
+          echo "After cleanup"
+          df -h
+
+      # 可选：创建 6G 交换分区，降低大编译 OOM 风险
+      - name: Add 6G swap
+        run: |
+          sudo fallocate -l 6G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          swapon --show
+          free -h
+
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git \
-            libncurses5-dev libncursesw5-dev libssl-dev python3-distutils python3-setuptools rsync unzip zlib1g-dev \
-            file wget libelf-dev ecj fastjar upx-ucl rename
+          sudo apt-get install -y \
+            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git \
+            libncurses5-dev libncursesw5-dev libssl-dev python3-distutils python3-setuptools \
+            rsync unzip zlib1g-dev file wget libelf-dev ecj fastjar upx-ucl rename
 
       - name: Add OpenClash feed (if missing)
         run: |
           if ! grep -q "vernesong/OpenClash" feeds.conf.default; then
             echo 'src-git openclash https://github.com/vernesong/OpenClash.git' >> feeds.conf.default
           fi
+          echo "==== feeds.conf.default ===="
           cat feeds.conf.default
 
       - name: Update & install feeds
@@ -35,11 +62,13 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      # 确保你仓库中存在 configs/ax3600-openclash.config
       - name: Use AX3600 + OpenClash config
         run: |
           cp configs/ax3600-openclash.config .config
           make defconfig
-          egrep -e "TARGET_|luci-app-openclash" .config || true
+          echo "==== Selected target & openclash ===="
+          egrep -e '^CONFIG_TARGET_' -e 'luci-app-openclash' .config || true
 
       - name: Download sources
         run: |
@@ -47,7 +76,8 @@ jobs:
 
       - name: Compile
         run: |
-          make -j$(nproc) || make -j1 V=s
+          # 优先并行编译，失败退回单进程并输出详细日志
+          make -j"$(nproc)" || make -j1 V=s
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -56,3 +86,4 @@ jobs:
           path: |
             bin/targets/**/*
             bin/packages/**/*
+          retention-days: 7
